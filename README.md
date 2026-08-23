@@ -24,7 +24,7 @@ This repository expands upon the educational problem presented in:
 ### Installation
 
 ```bash
-git clone https://github.com/your-username/eufod_modeling.git
+git clone https://github.com/dzlatkovic/eufod_modeling.git
 cd eufod_modeling
 pip install -e ".[dev]"
 ```
