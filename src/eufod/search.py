@@ -21,7 +21,7 @@ class SearchResult:
 
 
 def candidate_positions(oxygen, offset=300, step=5):
-    """Create the Cartesian search grid around the oxygen atom."""
+    """Create the Cartesian search grid around oxygen in cÅ units."""
     ranges = [
         np.arange(c - offset, c + offset, step)
         for c in oxygen
@@ -60,6 +60,13 @@ def _valid_mask(oxygen_eu, eu_h):
         (oxygen_eu >= MIN_DISTANCE)
         & np.all(eu_h >= MIN_DISTANCE, axis=1)
     )
+
+
+def predicted_shifts(position, oxygen, hydrogens):
+    """Calculate normalized predicted shifts for one Eu position."""
+    position = np.asarray(position, dtype=float).reshape(1, 3)
+    shifts, _, _ = _predicted_shifts(position, oxygen, hydrogens)
+    return shifts[0]
 
 
 def solve_r_factor(exp_delta, oxygen, hydrogens, offset=300, step=5):
@@ -207,6 +214,7 @@ def search_mapping(
         metric_name = "r_factor" if metric == "r_factor" else "pearson_r"
         header = (
             "# Eu(fod)3 coordinate mapping\n"
+            "# coordinate unit: cÅ\n"
             f"# metric: {metric_name}\n"
             f"# offset: {offset}\n"
             f"# step: {step}\n"

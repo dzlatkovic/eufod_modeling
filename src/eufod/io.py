@@ -6,41 +6,61 @@ import numpy as np
 
 
 def parse_input_text(text: str):
-    """Parse experimental shifts, oxygen coordinates, and hydrogen coordinates."""
+    """Parse labeled proton assignments and the coordinating oxygen."""
     lines = [
-        line.strip()
+        line.split("#", 1)[0].strip()
         for line in text.splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+        if line.split("#", 1)[0].strip()
     ]
 
-    if len(lines) < 3:
-        raise ValueError(
-            "Input must contain shifts, oxygen coordinates, and at least one "
-            "hydrogen coordinate line."
-        )
+    oxygen = None
+    labels = []
+    exp_delta = []
+    hydrogens = []
 
-    try:
-        exp_delta = np.asarray([float(x) for x in lines[0].split()], dtype=float)
-        oxygen = np.asarray([float(x) for x in lines[1].split()], dtype=float)
-        hydrogens = np.asarray(
-            [[float(x) for x in line.split()] for line in lines[2:]],
-            dtype=float,
-        )
-    except ValueError as exc:
-        raise ValueError("Input contains a non-numeric value.") from exc
+    for line in lines:
+        fields = line.split()
 
-    if oxygen.shape != (3,):
-        raise ValueError("Oxygen coordinates must contain exactly 3 values.")
+        if fields[0] == "O":
+            if len(fields) != 4:
+                raise ValueError("Oxygen record must be: O X Y Z.")
+            if oxygen is not None:
+                raise ValueError("Input must contain exactly one oxygen record.")
+            try:
+                oxygen = [float(value) for value in fields[1:]]
+            except ValueError as exc:
+                raise ValueError("Oxygen coordinates must be numeric.") from exc
+            continue
 
-    if hydrogens.ndim != 2 or hydrogens.shape[1] != 3:
-        raise ValueError("Each hydrogen coordinate must contain exactly 3 values.")
+        if len(fields) != 5:
+            raise ValueError(
+                "Each proton assignment must be: Label Exp_Shift X Y Z."
+            )
 
-    if len(exp_delta) != len(hydrogens):
-        raise ValueError(
-            "Number of experimental shifts must equal the number of hydrogen coordinates."
-        )
+        try:
+            shift, x, y, z = (float(value) for value in fields[1:])
+        except ValueError as exc:
+            raise ValueError(
+                "Proton assignment shifts and coordinates must be numeric."
+            ) from exc
 
-    return exp_delta, oxygen, hydrogens
+        labels.append(fields[0])
+        exp_delta.append(shift)
+        hydrogens.append([x, y, z])
+
+    if oxygen is None:
+        raise ValueError("Input must contain exactly one oxygen record: O X Y Z.")
+    if not hydrogens:
+        raise ValueError("Input must contain at least one proton assignment.")
+    if len(set(labels)) != len(labels):
+        raise ValueError("Proton assignment labels must be unique.")
+
+    return (
+        labels,
+        np.asarray(exp_delta, dtype=float),
+        np.asarray(oxygen, dtype=float),
+        np.asarray(hydrogens, dtype=float),
+    )
 
 
 def load_input(path: str | Path):

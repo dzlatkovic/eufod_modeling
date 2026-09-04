@@ -15,6 +15,7 @@ This repository expands upon the educational problem presented in:
 * **Implementation Comparison:** Benchmarks identical grid searches across native Python `for` loops, list comprehensions, and vectorized NumPy array operations.
 * **Dual Optimization Objectives:** Supports both absolute deviation (**R-factor**) and pattern similarity (**Pearson correlation**).
 * **Interactive Web UI:** Streamlit application for uploading atomic coordinate datasets, configuring search parameters, and downloading full mapping grids.
+* **Result Comparison Plot:** Interactive experimental-versus-predicted shift plot with labeled proton tooltips and an identity reference line.
 * **Modular Engine:** Clean separation of chemical models, computational search algorithms, CLI scripts, and web UI.
 
 ---
@@ -93,15 +94,24 @@ $$
 
 ## Input File Format
 
-Input files are plain-text containing experimental relative shifts followed by 3D Cartesian coordinates for Oxygen and Hydrogens:
+Input files are plain-text records. Comments begin with `#`. Include exactly one
+oxygen record and one proton-assignment record for each measured proton:
+Coordinates are expressed in `cÅ` units.
 
 ```text
-1.00 0.623 0.200 0.158 0.241 0.663 0.628 0.643 0.288 0.239
--797 -153 -182  # Oxygen coordinates (X, Y, Z)
--701   26 -183  # H1 coordinates
--744 -133   78  # H2 coordinates
-...
+# Coordinate unit: cÅ
+# Oxygen Center
+O   -797  -153  -182
+
+# Proton Assignments (Label, Exp_Shift, X, Y, Z)
+H-1   1.000  -701    26  -183
+H-2   0.623  -744  -133    78
+H-3a  0.200  -589    35   183
 ```
+
+The parser keeps proton labels with their shifts and coordinates, so each row is
+self-contained. The first proton assignment remains the normalization reference
+used by the model and should normally have an experimental shift of `1.000`.
 
 An example dataset derived from menthol titration is included in `data/example_input.txt`.
 

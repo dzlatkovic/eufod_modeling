@@ -2,7 +2,7 @@
 
 import numpy as np
 
-MIN_DISTANCE = 200.0
+MIN_DISTANCE = 200.0  # 2.00 Å, represented in cÅ coordinate units.
 
 
 def delta_value(eu_hydrogen, eu_oxygen, oxygen_hydrogen):

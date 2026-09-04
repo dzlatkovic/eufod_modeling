@@ -7,5 +7,5 @@ sys.path.insert(0, str(ROOT / "src"))
 from eufod.io import load_input
 from eufod.comprehensions import solve
 
-exp, oxygen, hydrogens = load_input(ROOT / "data/example_input.txt")
+_labels, exp, oxygen, hydrogens = load_input(ROOT / "data/example_input.txt")
 print("R-factor:", solve(exp, oxygen, hydrogens))

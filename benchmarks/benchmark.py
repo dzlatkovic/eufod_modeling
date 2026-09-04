@@ -35,7 +35,7 @@ def timed(fn, *args):
 
 def main():
     """Run the benchmark."""
-    exp, oxygen, hydrogens = load_input(
+    _labels, exp, oxygen, hydrogens = load_input(
         ROOT / "data/example_input.txt"
     )
 
