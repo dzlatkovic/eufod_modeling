@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eufod.io import parse_input_text
+from eufod.io import parse_input_text, parse_mapping_text
 
 
 def test_parse_labeled_assignments_with_comments():
@@ -37,3 +37,25 @@ def test_parse_labeled_assignments_with_comments():
 def test_parse_input_rejects_invalid_records(text, message):
     with pytest.raises(ValueError, match=message):
         parse_input_text(text)
+
+
+def test_parse_r_factor_mapping():
+    metric, coordinates, scores = parse_mapping_text(
+        """\ufeff
+        # Eu(fod)3 coordinate mapping
+        # coordinate unit: cÅ
+        # metric: r_factor
+        # x y z score
+        100 200 -50 5.25
+        110 200 -50 5.75
+        """
+    )
+
+    assert metric == "r_factor"
+    np.testing.assert_allclose(coordinates, [[100, 200, -50], [110, 200, -50]])
+    np.testing.assert_allclose(scores, [5.25, 5.75])
+
+
+def test_parse_mapping_rejects_unknown_metric():
+    with pytest.raises(ValueError, match="declare metric"):
+        parse_mapping_text("# metric: unknown\n1 2 3 4")

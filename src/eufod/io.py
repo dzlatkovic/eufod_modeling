@@ -71,3 +71,37 @@ def load_input(path: str | Path):
 def load_input_bytes(data: bytes):
     """Load input from uploaded file bytes."""
     return parse_input_text(data.decode("utf-8"))
+
+
+def parse_mapping_text(text: str):
+    """Parse a coordinate mapping exported by the EuFOD application."""
+    metric = None
+    rows = []
+
+    for line in text.lstrip("\ufeff").splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            if stripped.lower().startswith("# metric:"):
+                metric = stripped.split(":", 1)[1].strip().lower()
+            continue
+
+        fields = stripped.split()
+        if len(fields) != 4:
+            raise ValueError("Mapping rows must contain X Y Z and score.")
+        try:
+            rows.append([float(value) for value in fields])
+        except ValueError as exc:
+            raise ValueError("Mapping coordinates and scores must be numeric.") from exc
+
+    if metric not in {"r_factor", "pearson_r"}:
+        raise ValueError("Mapping must declare metric r_factor or pearson_r.")
+    if not rows:
+        raise ValueError("Mapping must contain at least one candidate position.")
+
+    values = np.asarray(rows, dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError("Mapping coordinates and scores must be finite.")
+
+    return metric, values[:, :3], values[:, 3]

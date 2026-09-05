@@ -12,7 +12,7 @@ from eufod.search import predicted_shifts, search_mapping
 
 ROOT = Path(__file__).resolve().parent
 EXAMPLE_INPUT = ROOT / "data" / "example_input.txt"
-MAX_FILE_SIZE_MB = 1
+MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
@@ -78,6 +78,15 @@ with st.sidebar:
         "> 🔗 [DOI: 10.1021/acs.jchemed.3c00613](https://doi.org/10.1021/acs.jchemed.3c00613)"
     )
     st.page_link("pages/1_Theory.py", label="Read the theory", icon="📖")
+    st.link_button(
+        "See how to prepare input data",
+        "https://github.com/dzlatkovic/eufod_modeling/blob/master/notebooks/borneol_titration_to_input.ipynb",
+        icon="🧪",
+        help=(
+            "Open the borneol case-study notebook: titration data, Δδ calculation, "
+            "normalization, coordinate assignment, and EuFOD input generation."
+        ),
+    )
 
 st.subheader("Input data")
 
@@ -102,7 +111,9 @@ else:
         "2. One proton-assignment record per proton: "
         "`Label Exp_Shift X Y Z` (coordinates in cÅ)\n\n"
         "Lines beginning with `#` are comments. "
-        "💡 *Tip: Switch to the **Example input** option above to see a sample dataset derived from menthol.*"
+        "💡 *Tip: Switch to the **Example input** option above to see a sample dataset derived from menthol.*  \n"
+        "🧪 [Worked borneol example: titration data to EuFOD input]"
+        "(https://github.com/dzlatkovic/eufod_modeling/blob/master/notebooks/borneol_titration_to_input.ipynb)"
     )
     uploaded = st.file_uploader(
     "Upload experimental shifts and coordinates",
