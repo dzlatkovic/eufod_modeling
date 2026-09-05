@@ -1,102 +1,32 @@
-# Eu(fod)₃ Position Modeling
+# EuFOD Position Modeling
 
-[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B.svg)](https://streamlit.io/)
 
-A modular Python framework and interactive web application for modeling paramagnetic shifts induced by lanthanide shift reagents (LSR) and determining the 3D spatial position of Eu in EuFOD–substrate complexes.
+EuFOD is a Python and Streamlit application for modelling paramagnetic $^1$H NMR shifts induced by Eu(fod)₃ and locating the best-fitting Eu position around a coordinating oxygen atom.
 
-This repository expands upon the educational problem presented in:
-> Zlatković, D.; Đorđević Zlatković, M.; Radulović, N. *Problem-Solving with Python: Modeling of Lanthanide-Shift Reagent Complexes.* **J. Chem. Educ.** 2023, 100 (9), 3620–3625. DOI: [10.1021/acs.jchemed.3c00613](https://doi.org/10.1021/acs.jchemed.3c00613)
+It expands on the educational problem described by Zlatković, Đorđević Zlatković, and Radulović in [*Journal of Chemical Education* 2023, 100, 3620–3625](https://doi.org/10.1021/acs.jchemed.3c00613).
 
----
-
-## Key Features
-
-* **Implementation Comparison:** Benchmarks identical grid searches across native Python `for` loops, list comprehensions, and vectorized NumPy array operations.
-* **Dual Optimization Objectives:** Supports both absolute deviation (**R-factor**) and pattern similarity (**Pearson correlation**).
-* **Interactive Web UI:** Streamlit application for uploading atomic coordinate datasets, configuring search parameters, and downloading full mapping grids.
-* **Result Comparison Plot:** Interactive experimental-versus-predicted shift plot with labeled proton tooltips and an identity reference line.
-* **Modular Engine:** Clean separation of chemical models, computational search algorithms, CLI scripts, and web UI.
-
----
-
-## Quickstart
-
-### Installation
+## Quick start
 
 ```bash
 git clone https://github.com/dzlatkovic/eufod_modeling.git
 cd eufod_modeling
 pip install -e ".[dev]"
-```
-
-### Interactive Streamlit App
-
-Launch the interactive dashboard to run searches and visualize result maps:
-
-```bash
 streamlit run app.py
 ```
 
-### CLI Implementation Scripts
+## What it does
 
-Compare the execution across different computational paradigms:
+- Searches a three-dimensional Eu grid using either minimum R-factor or maximum Pearson correlation.
+- Compares experimental and predicted relative shifts with proton-aware tooltips.
+- Exports the full valid-coordinate mapping.
+- Visualizes an exported mapping as a colour-coded Eu-position cloud around an optimized SDF structure.
+- Includes menthol input data and reproducible borneol/isoborneol titration case studies.
 
-```bash
-python scripts/run_reference.py     # Native Python loops
-python scripts/run_comprehensions.py # List comprehensions
-python scripts/run_vectorized.py    # NumPy vectorization
-```
+## Input format
 
----
-
-## Computational Implementations & Benchmarking
-
-The primary search evaluates candidate Eu³⁺ positions across a 3D Cartesian grid around the coordinating oxygen atom. Unphysical candidate positions violating predefined Eu–O or Eu–H distance constraints are filtered out prior to evaluation.
-
-| Implementation | Engine | Key Characteristic |
-| :--- | :--- | :--- |
-| **Reference** | Pure Python (`for` loops) | Iterates candidate positions sequentially. Clear baseline for model validation. |
-| **Comprehension** | Pure Python (`[x for x in ...]`) | Intermediate benchmark evaluating Python-level syntax overhead. |
-| **Vectorized** | NumPy (`ndarray`) | Evaluates the entire 3D grid simultaneously using broad-array vectorization. |
-
-Run the full comparative benchmark and test suite:
-
-```bash
-# Run execution time comparison
-python benchmarks/benchmark.py
-
-# Run test suite verifying mathematical consistency across implementations
-pytest
-```
-
----
-
-## Agreement Criteria
-
-1. **R-factor ($R$)** — Primary objective measuring absolute magnitude agreement:
-   $$
-R = 100 \sqrt{
-\operatorname{mean}
-\left[
-\left(
-\frac{\delta_{\mathrm{calc}} - \delta_{\mathrm{exp}}}
-{\delta_{\mathrm{exp}}}
-\right)^2
-\right]
-}
-$$
-2. **Pearson Correlation ($r$)** — Secondary objective evaluating pattern similarity across relative shift magnitudes.
-
-> **Note:** Because $R$ minimizes absolute fractional deviation while $r$ maximizes trend correlation, the two objectives may yield distinct optimal coordinates.
-
----
-
-## Input File Format
-
-Input files are plain-text records. Comments begin with `#`. Include exactly one
-oxygen record and one proton-assignment record for each measured proton:
-Coordinates are expressed in `cÅ` units.
+The first proton is the normalization reference and normally has an experimental relative shift of `1.000`. The coordinates in centiångström (cÅ).
 
 ```text
 # Coordinate unit: cÅ
@@ -109,49 +39,32 @@ H-2   0.623  -744  -133    78
 H-3a  0.200  -589    35   183
 ```
 
-The parser keeps proton labels with their shifts and coordinates, so each row is
-self-contained. The first proton assignment remains the normalization reference
-used by the model and should normally have an experimental shift of `1.000`.
+Comments begin with `#`. See [`data/example_input.txt`](data/example_input.txt) for the complete menthol example.
 
-An example dataset derived from menthol titration is included in `data/example_input.txt`.
+## 3D result viewer
 
----
+The **3D Result Viewer** page accepts a EuFOD mapping TXT and the matching optimized SDF/MOL geometry. Eu coordinates are converted from cÅ to Å automatically. The molecular geometry must use the same coordinate frame as the input used for the calculation.
 
-## Repository Structure
+The viewer displays the selected best positions as a green-to-red sphere cloud; cyan marks the optimal position.
 
-```text
-eufod_modeling/
-├── app.py                  # Streamlit web application
-├── benchmarks/
-│   └── benchmark.py        # Performance timing suite
-├── data/
-│   └── example_input.txt   # Menthol titration example data
-├── scripts/                # CLI runners for each paradigm
-├── src/
-│   └── eufod/              # Core computational engine
-│       ├── model.py        # Mathematical definitions & distance constraints
-│       ├── io.py           # Parser & input validation
-│       ├── reference.py    # Loop implementation
-│       ├── search.py       # NumPy vectorized implementation
-│       └── pearson.py      # Pearson-based objective search
-└── tests/                  # Pytest verification suites
+## Case studies
+
+- [`notebooks/borneol_titration_to_input.ipynb`](notebooks/borneol_titration_to_input.ipynb)
+- [`notebooks/isoborneol_titration_to_input.ipynb`](notebooks/isoborneol_titration_to_input.ipynb)
+
+Both notebooks document the path from EuFOD titration data to normalized shifts, optimized geometry and EuFOD input.
+
+## Development
+
+```bash
+pytest
+python benchmarks/benchmark.py
 ```
 
----
+The repository retains reference loop, list-comprehension, and NumPy-vectorized implementations for comparison.
 
 ## Citation
 
-If you use this codebase or the underlying chemistry problem in academic work, please cite the original J. Chem. Educ. publication:
+If you use the underlying chemistry problem, cite:
 
-```bibtex
-@article{zlatković2023problem,
-  title={Problem-Solving with Python: Modeling of Lanthanide-Shift Reagent Complexes},
-  author={Zlatković, Dragan and {\DJ}or{\dj}ević Zlatković, Miljana and Radulovic, Niko},
-  journal={Journal of Chemical Education},
-  volume={100},
-  number={9},
-  pages={3620--3625},
-  year={2023},
-  publisher={ACS Publications}
-}
-```
+> Zlatković, D.; Đorđević Zlatković, M.; Radulović, N. *Problem-Solving with Python: Modeling of Lanthanide-Shift Reagent Complexes.* **J. Chem. Educ.** 2023, 100, 3620–3625. [10.1021/acs.jchemed.3c00613](https://doi.org/10.1021/acs.jchemed.3c00613)
