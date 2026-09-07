@@ -10,6 +10,10 @@ import streamlit.components.v1 as components
 from eufod.io import parse_mapping_text
 
 
+MAX_UPLOAD_MB = 10
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+
 def colour_for_difference(difference: float, upper_limit: float) -> str:
     """Return a continuous green-yellow-red colour for a score difference."""
     fraction = 0.0 if upper_limit == 0 else min(difference / upper_limit, 1.0)
@@ -40,6 +44,17 @@ sdf_upload = st.file_uploader("Optimized molecular geometry (SDF)", type=["sdf",
 
 if mapping_upload is None or sdf_upload is None:
     st.stop()
+
+for uploaded_file, file_description in (
+    (mapping_upload, "Coordinate mapping"),
+    (sdf_upload, "Molecular geometry"),
+):
+    if uploaded_file.size > MAX_UPLOAD_BYTES:
+        st.error(
+            f"{file_description} exceeds the {MAX_UPLOAD_MB} MB upload limit. "
+            "Generate the mapping with a 10 cÅ or coarser grid for 3D visualization."
+        )
+        st.stop()
 
 try:
     metric, coordinates_cangstrom, scores = parse_mapping_text(
