@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from hashlib import sha256
 from pathlib import Path
 
 import streamlit as st
@@ -12,7 +13,7 @@ from eufod.search import predicted_shifts, search_mapping
 
 ROOT = Path(__file__).resolve().parent
 EXAMPLE_INPUT = ROOT / "data" / "example_input.txt"
-MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_MB = 1
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 
@@ -53,9 +54,9 @@ with st.sidebar:
         "Grid step (cÅ)",
         min_value=5,
         max_value=50,
-        value=5,
+        value=10,
         step=5,
-        help="5 cÅ corresponds to 0.05 Å. Smaller values give a finer but more expensive search.",
+        help="10 cÅ corresponds to 0.1 Å. Smaller values give a finer but more expensive search.",
     )
 
     include_mapping = st.checkbox(
@@ -66,11 +67,16 @@ with st.sidebar:
             "valid candidate position."
         ),
     )
+    if include_mapping:
+        st.caption(
+            "For the 3D Result Viewer, use a 10 cÅ or coarser grid; finer "
+            "mappings may exceed its 10 MB upload limit."
+        )
 
     st.divider()
 
     st.markdown(
-        "### Scientific Reference\n"
+        "### Reference\n"
         "This tool models paramagnetic shifts based on the problem described in:\n\n"
         "> Zlatković, D.; Đorđević Zlatković, M.; Radulović, N.  \n"
         "> *Problem-Solving with Python: Modeling of Lanthanide-Shift Reagent Complexes.*  \n"
@@ -173,6 +179,21 @@ st.write(
 if "last_result" not in st.session_state:
     st.session_state.last_result = None
 
+calculation_signature = (
+    sha256(input_bytes).hexdigest(),
+    metric_label,
+    int(offset),
+    int(step),
+    include_mapping,
+)
+previous_result = st.session_state.last_result
+if previous_result is not None and (
+    len(previous_result) != 3
+    or previous_result[2] != calculation_signature
+):
+    st.session_state.last_result = None
+    st.info("Settings changed — run the calculation to update the results.")
+
 if st.button("Run calculation", type="primary"):
     progress = st.progress(
         0.0,
@@ -197,7 +218,11 @@ if st.button("Run calculation", type="primary"):
                 text=f"Searching... {value:.0%}",
             ),
         )
-        st.session_state.last_result = (result, metric_label)
+        st.session_state.last_result = (
+            result,
+            metric_label,
+            calculation_signature,
+        )
     except Exception as exc:
         progress.empty()
         st.exception(exc)
@@ -210,7 +235,7 @@ if st.button("Run calculation", type="primary"):
 
 # Render results if available in session state
 if st.session_state.last_result is not None:
-    result, active_metric = st.session_state.last_result
+    result, active_metric, _calculation_signature = st.session_state.last_result
     score_name = "R-factor" if active_metric == "R-factor" else "Pearson r"
 
     st.success("Calculation complete.")
