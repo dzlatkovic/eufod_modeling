@@ -7,7 +7,7 @@ import py3Dmol
 import streamlit as st
 import streamlit.components.v1 as components
 
-from eufod.io import parse_mapping_text
+from eufod.io import parse_mapping_document
 
 
 MAX_UPLOAD_MB = 10
@@ -34,22 +34,22 @@ st.title("EuFOD 3D Result Viewer")
 st.caption("Inspect an exported Eu coordinate mapping around the molecular geometry used for the calculation.")
 
 st.info(
-    "Upload the mapping TXT exported by EuFOD and the matching optimized SDF. "
+    "Upload a mapping TXT to inspect its calculation details. Add the matching optimized SDF for 3D visualization. "
     "The SDF must use the same coordinate frame as the EuFOD input. "
     "Eu positions are converted automatically from cÅ to Å for display."
 )
 
 mapping_upload = st.file_uploader("EuFOD coordinate mapping (TXT)", type="txt")
-sdf_upload = st.file_uploader("Optimized molecular geometry (SDF)", type=["sdf", "mol"])
+sdf_upload = st.file_uploader("Optimized molecular geometry (SDF, optional)", type=["sdf", "mol"])
 
-if mapping_upload is None or sdf_upload is None:
+if mapping_upload is None:
     st.stop()
 
 for uploaded_file, file_description in (
     (mapping_upload, "Coordinate mapping"),
     (sdf_upload, "Molecular geometry"),
 ):
-    if uploaded_file.size > MAX_UPLOAD_BYTES:
+    if uploaded_file is not None and uploaded_file.size > MAX_UPLOAD_BYTES:
         st.error(
             f"{file_description} exceeds the {MAX_UPLOAD_MB} MB upload limit. "
             "Generate the mapping with a 10 cÅ or coarser grid for 3D visualization."
@@ -57,16 +57,50 @@ for uploaded_file, file_description in (
         st.stop()
 
 try:
-    metric, coordinates_cangstrom, scores = parse_mapping_text(
-        mapping_upload.getvalue().decode("utf-8")
-    )
-    sdf_text = sdf_upload.getvalue().decode("utf-8")
+    mapping_text = mapping_upload.getvalue().decode("utf-8")
+    metric, coordinates_cangstrom, scores, metadata = parse_mapping_document(mapping_text)
 except (UnicodeDecodeError, ValueError) as exc:
     st.error(f"Could not read the uploaded result files: {exc}")
     st.stop()
 
+if metadata is not None:
+    with st.expander("Calculation details", expanded=True):
+        st.caption(f"Calculated {metadata['created_utc']} • {metric}")
+        st.write({
+            "Grid offset (cÅ)": metadata["settings"]["offset"],
+            "Grid step (cÅ)": metadata["settings"]["step"],
+            "Minimum distance (cÅ)": metadata["settings"]["minimum_distance"],
+            "Best Eu position (cÅ)": metadata["result"]["position"],
+            "Best score": metadata["result"]["score"],
+        })
+        st.dataframe({
+            "Proton": metadata["input"]["labels"],
+            "Experimental": metadata["input"]["experimental_shifts"],
+            "Predicted": metadata["result"]["predicted_shifts"],
+            "Residual": metadata["result"]["residuals"],
+        }, hide_index=True)
+        st.download_button("Download original input", metadata["input"]["text"].encode("utf-8"),
+                           file_name="eufod_original_input.txt", mime="text/plain")
+    with st.expander("Full calculation metadata"):
+        st.json(metadata)
+else:
+    st.caption("Legacy mapping: calculation metadata is not included in this file.")
+
+if sdf_upload is None:
+    st.info("Add a matching SDF/MOL file to display the 3D view. It is not needed to inspect calculation details.")
+    st.stop()
+try:
+    sdf_text = sdf_upload.getvalue().decode("utf-8")
+except UnicodeDecodeError as exc:
+    st.error(f"Could not read molecular geometry: {exc}")
+    st.stop()
+
 ascending = metric == "r_factor"
 order = np.argsort(scores) if ascending else np.argsort(-scores)
+if metadata is not None:
+    # Preserve the full-precision winner when exported scores round to a tie.
+    winner = np.flatnonzero(np.all(coordinates_cangstrom == metadata["result"]["position"], axis=1))[0]
+    order = np.concatenate(([winner], order[order != winner]))
 coordinates_cangstrom = coordinates_cangstrom[order]
 scores = scores[order]
 best_score = scores[0]
@@ -79,7 +113,7 @@ else:
     score_label = "Pearson r"
 
 top_limit = min(1_000, len(scores))
-top_count = st.slider(
+top_count = 1 if top_limit == 1 else st.slider(
     "Number of best positions to display",
     min_value=1,
     max_value=top_limit,
@@ -128,4 +162,48 @@ viewer.addSphere(
     }
 )
 viewer.zoomTo()
-components.html(viewer._make_html(), height=660, scrolling=False)
+viewer_html = viewer._make_html()
+# Keep the button in the viewer's iframe so it captures the current camera
+# without a Streamlit rerun resetting the rotation and zoom.
+viewer_html += """
+<style>
+  #download-png {
+    margin-top: 10px; padding: 8px 14px; border: 1px solid #bbb;
+    border-radius: 6px; background: white; color: #222;
+    font: 14px sans-serif; cursor: pointer;
+  }
+  #download-png:disabled { opacity: 0.5; cursor: wait; }
+  #export-status { margin-left: 10px; font: 14px sans-serif; color: #444; }
+</style>
+<button id="download-png" type="button" disabled>Download view as PNG</button>
+<span id="export-status" role="status" aria-live="polite"></span>
+<script>
+  const downloadButton = document.getElementById('download-png');
+  const exportStatus = document.getElementById('export-status');
+  $3Dmolpromise.then(function () {
+    if (viewer_VIEWER_ID) downloadButton.disabled = false;
+  });
+  downloadButton.addEventListener('click', function () {
+    try {
+      const currentViewer = viewer_VIEWER_ID;
+      currentViewer.render();
+      const image = currentViewer.pngURI();
+      if (!image.startsWith('data:image/png')) {
+        throw new Error('No PNG image was produced.');
+      }
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = 'eufod_3d_view.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      exportStatus.textContent = '';
+    } catch (error) {
+      exportStatus.textContent = 'Could not export the image. Please try again.';
+      console.error('EuFOD PNG export failed:', error);
+    }
+  });
+</script>
+""".replace("VIEWER_ID", viewer.uniqueid)
+st.caption("Rotate and zoom to frame your image, then select Download view as PNG below the viewer.")
+components.html(viewer_html, height=720, scrolling=False)

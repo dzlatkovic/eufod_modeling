@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+from math import ceil
 from pathlib import Path
 
 import streamlit as st
@@ -166,12 +167,12 @@ with assignment_column:
         use_container_width=True,
     )
 
-# Correct inclusive grid point count: (2 * offset // step + 1)^3
-steps_per_axis = (2 * offset) // step + 1
+# The upper grid boundary is excluded, matching the search.
+steps_per_axis = ceil(2 * offset / step)
 grid_points = steps_per_axis ** 3
 
 st.write(
-    f"Approximate search size: **{grid_points:,} candidate positions** "
+    f"Search size: **{grid_points:,} candidate positions** "
     "(before distance filtering)."
 )
 
@@ -180,6 +181,7 @@ if "last_result" not in st.session_state:
     st.session_state.last_result = None
 
 calculation_signature = (
+    "mapping-v2",
     sha256(input_bytes).hexdigest(),
     metric_label,
     int(offset),
@@ -213,6 +215,8 @@ if st.button("Run calculation", type="primary"):
                 else "pearson"
             ),
             include_mapping=include_mapping,
+            labels=labels,
+            input_text=input_bytes.decode("utf-8"),
             progress_callback=lambda value: progress.progress(
                 value,
                 text=f"Searching... {value:.0%}",
@@ -223,6 +227,10 @@ if st.button("Run calculation", type="primary"):
             metric_label,
             calculation_signature,
         )
+    except ValueError as exc:
+        progress.empty()
+        st.error(str(exc))
+        st.stop()
     except Exception as exc:
         progress.empty()
         st.exception(exc)
@@ -252,6 +260,7 @@ if st.session_state.last_result is not None:
                 else "eu_position_mapping_pearson.txt"
             ),
             mime="text/plain",
+            help="Includes input data, search settings, predictions, and software versions. No SDF required.",
         )
     result_col2.metric(score_name, f"{result.score:.6f}")
 

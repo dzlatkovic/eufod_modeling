@@ -59,3 +59,17 @@ def test_parse_r_factor_mapping():
 def test_parse_mapping_rejects_unknown_metric():
     with pytest.raises(ValueError, match="declare metric"):
         parse_mapping_text("# metric: unknown\n1 2 3 4")
+
+
+@pytest.mark.parametrize("text", [
+    "O nan 0 0\nH 1 2 3 4", "O 0 0 0\nH inf 2 3 4",
+    "O 0 0 0\nH 1 2 -inf 4",
+])
+def test_input_rejects_nonfinite_numbers(text):
+    with pytest.raises(ValueError, match="finite"):
+        parse_input_text(text)
+
+
+def test_input_accepts_utf8_bom():
+    labels, *_ = parse_input_text("\ufeffO 0 0 0\nH 1 2 3 4")
+    assert labels == ["H"]

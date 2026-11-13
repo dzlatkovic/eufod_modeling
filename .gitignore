@@ -10,3 +10,4 @@ dist/
 agreement_data.csv
 *.log
 .idea/
+venv/

@@ -1,5 +1,19 @@
+# Install the local package so app and test imports work after a fresh clone.
+-e .
+
+# Application and numerical model
 numpy>=1.24
 pandas>=2.0
-pytest>=7
 streamlit>=1.35
 py3Dmol>=2.0
+
+# Tests
+pytest>=7
+
+# Notebook plotting, chemistry, display, kernel, and execution
+matplotlib>=3.7
+rdkit>=2023.9
+ipython>=8
+ipykernel>=6
+jupyterlab>=4
+nbclient>=0.8
